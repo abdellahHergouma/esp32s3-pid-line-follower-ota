@@ -11,31 +11,40 @@ bool otaInitialized = false;
 
 void initNetwork() {
   WiFi.mode(WIFI_STA);
+  // DISABLE power saving mode to stop ESP32-S3 brownouts during Wi-Fi transmission
+  WiFi.setSleep(false); 
   WiFi.begin(ssid, password);
-  Serial.println("Wi-Fi connection initiated in background...");
+  Serial.println("[NETWORK] Wi-Fi connection initiated on Core 0...");
 }
 
 void handleNetwork() {
-  // Check if Wi-Fi connected, then initialize OTA exactly once
   if (WiFi.status() == WL_CONNECTED) {
     if (!otaInitialized) {
-      Serial.println("\nWi-Fi Connected successfully!");
-      Serial.print("IP Address: ");
+      Serial.println("\n[NETWORK] Wi-Fi Connected!");
+      Serial.print("[NETWORK] IP Address: ");
       Serial.println(WiFi.localIP());
 
-      ArduinoOTA.setHostname("esp32s3-n16r8-device");
+      ArduinoOTA.setHostname("esp32s3-pid-linefollower");
       ArduinoOTA.setPassword("admin");
+
+      ArduinoOTA.onStart([]() {
+        Serial.println("[OTA] Firmware update starting...");
+      });
+      ArduinoOTA.onEnd([]() {
+        Serial.println("\n[OTA] Update Complete.");
+      });
+      ArduinoOTA.onError([](ota_error_t error) {
+        Serial.printf("[OTA] Error[%u]\n", error);
+      });
+
       ArduinoOTA.begin();
-      
       otaInitialized = true;
     }
     
-    // Process OTA requests if connected
     ArduinoOTA.handle();
   } else {
-    // If connection drops, reset initialization flag to allow re-init when network returns
     if (otaInitialized) {
-      Serial.println("Wi-Fi disconnected. Waiting for reconnection...");
+      Serial.println("[NETWORK] Wi-Fi connection lost. Waiting to reconnect...");
       otaInitialized = false;
     }
   }
